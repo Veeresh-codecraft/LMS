@@ -16,31 +16,6 @@ const selectSql = `
 const countSql = `
     SELECT COUNT(*) AS \`count\` FROM ${tableName}
 `;
-const insertSql = `
-    INSERT INTO ${tableName} (
-        \`name\`, 
-        \`email\`, 
-        \`dob\`, 
-        \`address\`
-    ) VALUES (
-        'Krishanu',
-        'krishanu@codecraft.co.in',
-        '1990-09-21',
-        'Kolkata, West Bengal'
-    )
-`;
-
-const updateSql = `
-    UPDATE ${tableName} SET
-        \`name\` = 'Krishanu Dey',
-        \`address\` = 'Berhampore, Murshidabd, West Bengal'
-    WHERE 
-        \`email\` = "krishanu@codecraft.co.in"
-`;
-
-const deleteSql = `
-    DELETE FROM ${tableName} WHERE \`email\` = "krishanu@codecraft.co.in" AND \`name\` = "Krishanu Dey"
-`;
 type InsertData = {
   name: string;
   DOB: string;
@@ -50,7 +25,7 @@ type InsertData = {
 async function InsertFunction(
   connection: mysql.PoolConnection,
   data: InsertData
-): Promise<T> {
+) {
   const rawData = { ...data };
   const DOB = rawData.DOB;
   const name = rawData.name;
@@ -58,10 +33,10 @@ async function InsertFunction(
   const address = rawData.address;
   const insertSql = `
     INSERT INTO ${tableName} (
-        \`name\`, 
-        \`email\`, 
-        \`dob\`, 
-        \`address\`
+        \`Name\`, 
+        \`Email\`, 
+        \`D.O.B\`, 
+        \`Address\`
     ) VALUES (
         '${name}',
         '${email}',
@@ -73,6 +48,39 @@ async function InsertFunction(
     await runQuery(connection, "insert", insertSql);
   } catch (err) {
     consoleDir(err as Error);
+  }
+}
+async function DeleteFunction(connection: mysql.PoolConnection, deleteID: number) {
+  const deleteSql = `
+    DELETE FROM ${tableName} WHERE \`ID\` = "${deleteID}"`;
+  try {
+    await runQuery(connection, "delete", deleteSql);
+  } catch (err) {
+    consoleDir(err as Error);
+  }
+}
+async function UpdateFunction(
+  connection: any,
+  updateData: {
+    InternId: string;
+    InternName: string;
+    InternDOB: string;
+    InternEmail: string;
+    InternAddress: string;
+  }
+) {
+  const updateSql = `
+    UPDATE ${tableName}
+    SET
+      \`Name\` = "${updateData.InternName}",
+      \`D.O.B\` = "${updateData.InternDOB}",
+      \`Email\` = "${updateData.InternEmail}",
+      \`Address\` = "${updateData.InternAddress}"
+    WHERE \`ID\` = "${+updateData.InternId}"`;
+  try {
+    await runQuery(connection, "update", updateSql);
+  } catch (err) {
+    console.error(err as Error);
   }
 }
 
@@ -92,36 +100,56 @@ async function runQuery(
 }
 
 async function main() {
+  let connection:any;
+
   try {
     const pool = mysql.createPool(process.env.DATABASE_URL!);
-    const connection = await pool.getConnection();
-    const insertData = await insertInternData();
-    const updateData = await updateInternData();
-    const deleteId = await deleteInternId();
+    connection = await pool.getConnection();
+    
     await runQuery(connection, "select", selectSql);
     await runQuery(connection, "count", countSql);
+    
+    
+    
+    while (true) {
+      console.log("1. Insert Intern Data");
+      console.log("2. Update Intern Data");
+      console.log("3. Delete Intern Data");
+      console.log("4. Quit ");
+      const op = await readChar("Enter your choice:");
 
-    await runQuery(connection, "select", selectSql);
-    await runQuery(connection, "count", countSql);
-
-    await runQuery(connection, "update", updateSql);
-    await runQuery(connection, "select", selectSql);
-    await runQuery(connection, "count", countSql);
-
-    await runQuery(connection, "delete", deleteSql);
-    await runQuery(connection, "select", selectSql);
-    await runQuery(connection, "count", countSql);
-
-    connection.release();
-    pool.end();
+      switch (op) {
+        case "1": {
+          const insertData = await insertInternData();
+          await InsertFunction(connection, insertData);
+          break;
+        }
+        case "2": {
+          const updateData = await updateInternData();
+          await UpdateFunction(connection, updateData);
+          break;
+        }
+        case "3": {
+          const deleteID = await deleteInternId();
+          await DeleteFunction(connection, deleteID);
+          break;
+        }
+        case "4": {
+          console.log("Exiting....");
+          process.exit(0);
+        }
+        default: {
+          console.log(`Invalid Choice ${op}\nEnter Valid choice`);
+        }
+      }
+    }
   } catch (err) {
-    consoleDir(err);
+    console.error(err);
   }
-  while (true) {
-    console.log("1. Insert Intern Data");
-    console.log("2. Update Intern Data");
-    console.log("3. Delete Intern Data");
-    console.log("4. Quit ");
+  finally {
+    if (connection) {
+      connection.release();
+    }
   }
 }
 
@@ -139,11 +167,27 @@ async function insertInternData(): Promise<InsertData> {
   };
 }
 
-async function updateInternData() {
-  throw new Error("Function not implemented.");
+async function updateInternData(){
+  const InternId = await readLine("Enter Intern  Id: ");
+  const InternDOB = await readLine("Enter  Updated Intern  D.O.B: ");
+  const InternEmail = await readLine("Enter  Updated Intern  Email-ID: ");
+  const InternAddress = await readLine("Enter  Updated Intern  Address: ");
+  const InternName = await readLine("Enter  Updated Intern  Name: ");
+  return {
+InternId,
+InternName,
+InternDOB,
+InternEmail,
+InternAddress
+  }
 }
 
 async function deleteInternId(): Promise<number> {
   const InternId = await readLine("Enter Intern  Id: ");
   return +InternId;
 }
+
+
+
+
+
